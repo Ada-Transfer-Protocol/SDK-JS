@@ -42,7 +42,7 @@
     <button id="btn" disabled>Send</button>
 
     <script type="module">
-        import { AdaTPClient } from './src/client.js';
+        import { AdaTPClient } from './dist/client.js';
 
         const status = document.getElementById('status');
         const log = document.getElementById('log');
@@ -58,7 +58,7 @@
         }
 
         // Connect to local server
-        const client = new AdaTPClient('ws://127.0.0.1:3000/ws');
+        const client = new AdaTPClient('wss://adatp.cengizakcan.com/ws');
 
         client.onConnect = () => {
             status.innerText = "Status: Connected";

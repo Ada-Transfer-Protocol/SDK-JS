@@ -13,23 +13,41 @@ export const MessageType = {
     VideoData: 0x0053,
     PresenceUpdate: 0x0060,
     JoinRoom: 0x00A0
-};
+} as const;
+
+export type MessageTypeValue = typeof MessageType[keyof typeof MessageType];
 
 export const PacketFlags = {
     Encrypted: 0x0001
-};
+} as const;
+
+export type PacketFlagsValue = typeof PacketFlags[keyof typeof PacketFlags];
+
+export interface ParsedPacket {
+    msgType: MessageTypeValue;
+    length: number;
+    sessionId: Uint8Array;
+    payload: Uint8Array;
+}
 
 export class Packet {
-    constructor(msgType, payload, sessionId) {
+    msgType: MessageTypeValue;
+    payload: Uint8Array;
+    sessionId: Uint8Array;
+    flags: number;
+    sequence: bigint;
+    timestamp: bigint;
+
+    constructor(msgType: MessageTypeValue, payload: Uint8Array, sessionId: Uint8Array) {
         this.msgType = msgType;
-        this.payload = payload; // Uint8Array
-        this.sessionId = sessionId; // Uint8Array (16 bytes)
+        this.payload = payload;
+        this.sessionId = sessionId;
         this.flags = 0;
         this.sequence = 0n;
         this.timestamp = BigInt(Date.now());
     }
 
-    toBytes() {
+    toBytes(): ArrayBuffer {
         const headerSize = 45;
         const totalSize = headerSize + this.payload.length;
         const buffer = new ArrayBuffer(totalSize);
@@ -62,15 +80,15 @@ export class Packet {
         return buffer;
     }
 
-    static fromBytes(buffer) {
+    static fromBytes(buffer: ArrayBuffer): ParsedPacket | null {
         const view = new DataView(buffer);
-        if (buffer.byteLength < 45) throw new Error("Packet too short");
+        if (buffer.byteLength < 45) return null;
 
         const magic = view.getUint32(0, true);
-        if (magic !== MAGIC_NUMBER) throw new Error("Invalid magic");
+        if (magic !== MAGIC_NUMBER) return null;
 
         const length = view.getUint32(7, true);
-        const msgType = view.getUint16(19, true);
+        const msgType = view.getUint16(19, true) as MessageTypeValue;
 
         // Extract Session ID (Offset 29, 16 bytes)
         const sessionId = new Uint8Array(buffer.slice(29, 29 + 16));

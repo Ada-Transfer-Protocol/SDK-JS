@@ -65,9 +65,9 @@
     <div id="status">Connecting to server...</div>
 
     <script type="module">
-        import { AdaTpFileTransfer } from './src/adatp.js';
+        import { AdaTpFileTransfer } from './dist/adatp.js';
 
-        const client = new AdaTpFileTransfer("ws://127.0.0.1:3000/ws");
+        const client = new AdaTpFileTransfer("wss://adatp.cengizakcan.com/ws");
 
         client.on('connect', () => {
             document.getElementById('status').innerText = "Ready to send";

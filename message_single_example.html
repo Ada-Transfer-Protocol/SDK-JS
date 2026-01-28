@@ -109,9 +109,9 @@
     </div>
 
     <script type="module">
-        import { AdaTPChat } from './src/adatp.js';
+        import { AdaTPChat } from './dist/adatp.js';
 
-        const chatClient = new AdaTPChat("ws://127.0.0.1:3000/ws");
+        const chatClient = new AdaTPChat("wss://adatp.cengizakcan.com/ws");
         const chatUI = document.getElementById('chat');
 
         chatClient.on('connect', () => {
@@ -129,7 +129,7 @@
             addMsg(txt, 'received');
         });
 
-        chatClient.connect();
+
 
         window.send = () => {
             const inp = document.getElementById('inp');
@@ -145,6 +145,7 @@
             chatUI.innerHTML += `<div class="msg ${type}">${txt}</div>`;
             chatUI.scrollTop = chatUI.scrollHeight;
         }
+        chatClient.connect();
     </script>
 </body>
 

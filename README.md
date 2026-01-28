@@ -1,22 +1,57 @@
-# AdaTP JavaScript SDK (v2.0)
+# AdaTP JavaScript SDK (v2.1)
 
-**Ada Transfer Protocol (AdaTP)** is a next-generation real-time communication protocol designed for low-latency voice, video, and data transfer. This JavaScript SDK provides a modular, low-code interface to integrate AdaTP into any web application.
+**Ada Transfer Protocol (AdaTP)** is a next-generation real-time communication protocol designed for low-latency voice, video, and data transfer. This SDK is written in **TypeScript** and provides a modular, low-code interface to integrate AdaTP into any web application.
 
 > **Key Features:**
 > *   🚀 **Low-Latency & High Performance**: Optimized binary protocol over WebSocket.
 > *   🧩 **Modular Architecture**: Separate modules for Phone, Chat, Conference, and File Transfer.
 > *   ⚡ **Low-Code Integration**: Initialize and start using with a simple configuration object.
 > *   🔒 **Secure & Private**: Built-in authentication and room management.
-> *   🔈 **High-Quality Audio**: 16kHz PCM Audio Engine with VAD (Voice Activity Detection).
+> *   🔈 **High-Quality Audio**: 16kHz PCM Audio Engine with VAD.
+> *   🦾 **TypeScript Support**: Fully typed for better development experience.
 
 ---
 
-## 📦 Installation
+## 🛠 Prerequisites & Installation
 
-Simply copy the `src` folder to your project or import directly.
+**Prerequisites:**
+- Node.js (v18+)
+- NPM
 
-```javascript
-import { AdaTPPhone, AdaTPChat, AdaTPConference } from './src/adatp.js';
+1. **Install Dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Build the SDK:**
+   The SDK is written in TypeScript. You need to build it to generate the `dist` folder.
+   ```bash
+   npm run build
+   ```
+   This will create `dist/adatp.js` (ESM), `dist/client.js`, and type definitions (`.d.ts`).
+
+3. **Running Examples:**
+   We recommend using a simple HTTP server to serve the examples.
+   ```bash
+   npx serve .
+   ```
+   Then open `http://localhost:3000` in your browser.
+
+---
+
+## 📦 Usage
+
+You can import the SDK directly from the `dist` folder in your project or HTML files.
+
+```html
+<script type="module">
+    import { AdaTPPhone, AdaTPChat, AdaTPConference } from './dist/adatp.js';
+
+    const client = new AdaTPChat("ws://localhost:8080/ws", {
+        username: "MyUser",
+        onMessage: (msg) => console.log(msg)
+    });
+</script>
 ```
 
 ---
@@ -29,7 +64,7 @@ Best for softphones, customer support lines, and private voice calls. Handles si
 
 ```javascript
 const phone = new AdaTPPhone("ws://127.0.0.1:3000/ws", {
-    username: "Agent007", // Auto-login
+    username: "Agent007", 
     
     // --- Lifecycle Events ---
     onConnect: ()       => console.log("Phone Online 🟢"),
@@ -135,31 +170,17 @@ conf.leave();               // Leave room & notify others
 Reliable file streaming over AdaTP.
 
 ```javascript
-import { AdaTpFileTransfer } from './src/adatp.js';
+import { AdaTpFileTransfer } from './dist/adatp.js';
 
 const client = new AdaTpFileTransfer("ws://127.0.0.1:3000/ws");
 
 // Send File
-const fileInput = document.getElementById('myFile');
-client.sendFile(fileInput.files[0]);
+// client.sendFile(fileInput.files[0]);
 
 // Receive Progress
 client.on('progress', (pct) => console.log(`Upload: ${pct}%`));
 client.on('complete', ()    => console.log("Transfer Done!"));
 ```
-
----
-
-## 🛠 Advanced Configuration
-
-All classes accept an optional `options` object:
-
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `username` | `string` | `"User"` | Initial username for authentication. |
-| `password` | `string` | `"pass"` | Password for authentication. |
-| `autoConnect`| `boolean`| `true` | Automatically connect on instantiation. |
-| `*` | `function` | `undefined` | Any event handler (e.g. `onConnect`, `onMessage`). |
 
 ---
 

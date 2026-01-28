@@ -270,14 +270,14 @@
     </div>
 
     <script type="module">
-        import { AdaTPPhone } from './src/adatp.js';
+        import { AdaTPPhone } from './dist/adatp.js';
 
         const ringtone = new Audio('https://upload.wikimedia.org/wikipedia/commons/e/e0/Synthesized_Ring_Tone.ogg');
         ringtone.loop = true;
         let callInterval = null;
 
         // --- ULTRA LOW CODE INTEGRATION ---
-        window.phone = new AdaTPPhone("ws://127.0.0.1:3000/ws", {
+        window.phone = new AdaTPPhone("wss://adatp.cengizakcan.com/ws", {
             username: "MobileUser", // Auto connect & login
 
             onConnect: () => document.getElementById('myId').innerText = phone.getMyId().substring(0, 6),
@@ -328,8 +328,10 @@
         });
 
         // At the end, call explicit init() if connection was not auto-started (but we passed config, so it is)
-        // If we want manual signaling channel join:
+        // Initialize Phone (Connect, auth, join signaling)
         phone.init();
+        // If we want manual signaling channel join:
+
 
         // --- UI Callbacks ---
 

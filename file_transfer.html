@@ -71,9 +71,9 @@
     <div id="log"></div>
 
     <script type="module">
-        import { AdaTPClient } from './src/client.js';
+        import { AdaTPClient } from './dist/client.js';
 
-        const client = new AdaTPClient('ws://127.0.0.1:3000/ws');
+        const client = new AdaTPClient('wss://adatp.cengizakcan.com/ws');
 
         // Setup
         client.onConnect = () => {
@@ -82,8 +82,8 @@
             client.authenticate("WebFileUser", "pass");
             client.joinRoom("files");
         };
-
         client.connect();
+
 
         // Drag & Drop Logic
         const dropZone = document.getElementById('dropZone');

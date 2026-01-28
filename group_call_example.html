@@ -162,11 +162,11 @@
     </div>
 
     <script type="module">
-        import { AdaTPConference } from './src/adatp.js';
+        import { AdaTPConference } from './dist/adatp.js';
 
         // --- Low Code Integration ---
         // Just config & go!
-        const client = new AdaTPConference("ws://127.0.0.1:3000/ws", {
+        const client = new AdaTPConference("wss://adatp.cengizakcan.com/ws", {
 
             onConnect: () => console.log("Connected"),
 

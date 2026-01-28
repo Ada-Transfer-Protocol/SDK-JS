@@ -136,9 +136,9 @@
     </div>
 
     <script type="module">
-        import { AdaTPChat } from './src/adatp.js';
+        import { AdaTPChat } from './dist/adatp.js';
 
-        const client = new AdaTPChat("ws://127.0.0.1:3000/ws");
+        const client = new AdaTPChat("wss://adatp.cengizakcan.com/ws");
         let currentRoom = "general";
 
         client.on('connect', () => {
@@ -155,7 +155,7 @@
         client.on('user_joined', (sid) => log("System", `User ${sid.substr(0, 4)} joined.`, true));
         client.on('user_left', (sid) => log("System", `User ${sid.substr(0, 4)} left.`, true));
 
-        client.connect();
+
 
         window.switchRoom = (roomName) => {
             if (currentRoom === roomName) return;
