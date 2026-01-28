@@ -1,0 +1,115 @@
+/**
+ * AdaTP TypeScript SDK (Modular Architecture)
+ * Each class handles a specific domain of the protocol.
+ */
+declare const MessageType: {
+    readonly HandshakeInit: 1;
+    readonly AuthRequest: 16;
+    readonly AuthSuccess: 19;
+    readonly TextMessage: 32;
+    readonly FileInit: 48;
+    readonly FileChunk: 49;
+    readonly FileComplete: 51;
+    readonly VoiceData: 68;
+    readonly VideoData: 83;
+    readonly PresenceUpdate: 96;
+    readonly JoinRoom: 160;
+};
+type MessageTypeValue = typeof MessageType[keyof typeof MessageType];
+interface ParsedPacket {
+    type: MessageTypeValue;
+    payload: Uint8Array;
+    sessionId: Uint8Array;
+}
+type EventCallback = (...args: any[]) => void;
+type EventMap = Record<string, EventCallback[]>;
+interface AdaTPOptions {
+    autoConnect?: boolean;
+    username?: string;
+    password?: string;
+    onConnect?: () => void;
+    onDisconnect?: () => void;
+    onMessage?: (text: string, senderId: string) => void;
+    onUserJoined?: (senderId: string) => void;
+    onUserLeft?: (senderId: string) => void;
+    onIncomingCall?: (senderId: string) => void;
+    onDialing?: (targetId: string) => void;
+    onRemoteRinging?: () => void;
+    onConnected?: () => void;
+    onEnded?: (reason: string) => void;
+    onVoiceActivity?: (senderId: string) => void;
+    onNetworkQuality?: (latency: number) => void;
+    onProgress?: (percent: number) => void;
+    onComplete?: () => void;
+    onJoined?: (room: string) => void;
+    onLeft?: () => void;
+    onMuteChanged?: (senderId: string, isMuted: boolean) => void;
+}
+declare class AdaTPBase {
+    protected url: string;
+    protected options: AdaTPOptions;
+    protected ws: WebSocket | null;
+    protected sid: Uint8Array;
+    protected events: EventMap;
+    protected isConnected: boolean;
+    constructor(url: string, options?: AdaTPOptions);
+    on(event: string, callback: EventCallback): void;
+    emit(event: string, ...args: any[]): void;
+    connect(username?: string, password?: string): Promise<void>;
+    protected _handle(data: ArrayBuffer): void;
+    protected handlePacket(_p: ParsedPacket, _senderId: string): void;
+    protected _send(type: MessageTypeValue, data: string | Uint8Array): void;
+    getMyId(): string;
+    disconnect(): void;
+}
+declare class AdaTPChat extends AdaTPBase {
+    join(room: string): void;
+    say(text: string): void;
+    protected handlePacket(p: ParsedPacket, senderId: string): void;
+}
+declare class AdaTpFileTransfer extends AdaTPBase {
+    sendFile(file: File): Promise<void>;
+}
+declare class AdaTPConference extends AdaTPBase {
+    private audio;
+    private users;
+    constructor(url: string, options?: AdaTPOptions);
+    get audioCtx(): AudioContext | null;
+    get micStream(): MediaStream | null;
+    join(room: string): void;
+    leave(): void;
+    toggleMute(): boolean;
+    protected handlePacket(p: ParsedPacket, senderId: string): void;
+    startAudio(): Promise<void>;
+    stopAudio(): void;
+    getUsers(): Set<string>;
+}
+type CallState = "IDLE" | "DIALING" | "INCOMING" | "CONNECTED";
+declare class AdaTPPhone extends AdaTPBase {
+    private audio;
+    private callState;
+    private currentRoom;
+    private pendingRoom;
+    private signalingRoom;
+    private lastPingStart;
+    private pingInterval;
+    constructor(url: string, options?: AdaTPOptions);
+    get audioCtx(): AudioContext | null;
+    get micStream(): MediaStream | null;
+    ping(): void;
+    init(): void;
+    call(targetId: string): void;
+    answer(): void;
+    reject(): void;
+    hangup(): void;
+    toggleMute(): boolean;
+    private _joinAndStart;
+    private _reset;
+    protected handlePacket(p: ParsedPacket, senderId: string): void;
+    startAudio(): Promise<void>;
+    stopAudio(): void;
+    getCallState(): CallState;
+    disconnect(): void;
+}
+
+export { AdaTPBase, AdaTPChat, AdaTPConference, type AdaTPOptions, AdaTPPhone, AdaTpFileTransfer, MessageType, type MessageTypeValue };

@@ -71,19 +71,32 @@
     <div id="log"></div>
 
     <script type="module">
-        import { AdaTPClient } from './dist/client.js';
+        import { AdaTpFileTransfer } from './dist/adatp.js';
 
-        const client = new AdaTPClient('wss://adatp.cengizakcan.com/ws');
-
-        // Setup
-        client.onConnect = () => {
-            document.getElementById('status').innerText = "Connected";
-            document.getElementById('status').style.color = "green";
-            client.authenticate("WebFileUser", "pass");
-            client.joinRoom("files");
-        };
-        client.connect();
-
+        const client = new AdaTpFileTransfer('wss://adatp.cengizakcan.com/ws', {
+            autoConnect: true,
+            onConnect: () => {
+                document.getElementById('status').innerText = "Connected";
+                document.getElementById('status').style.color = "green";
+                log("System: Ready to transfer files.");
+            },
+            onDisconnect: () => {
+                document.getElementById('status').innerText = "Disconnected";
+                document.getElementById('status').style.color = "red";
+            },
+            onProgress: (pct) => {
+                document.getElementById('progressBox').style.display = 'block';
+                document.getElementById('progressBar').style.width = pct + '%';
+            },
+            onComplete: () => {
+                document.getElementById('progressBar').style.width = '100%';
+                log("✅ Upload Complete");
+                setTimeout(() => {
+                    document.getElementById('progressBox').style.display = 'none';
+                    document.getElementById('progressBar').style.width = '0%';
+                }, 2000);
+            }
+        });
 
         // Drag & Drop Logic
         const dropZone = document.getElementById('dropZone');
@@ -105,27 +118,13 @@
             document.getElementById('progressBox').style.display = 'block';
             document.getElementById('progressBar').style.width = '0%';
 
-            // Mock Progress UI (since generic sendFile doesn't emit progress events yet)
-            // In real app, pass a callback to sendFile.
-            let p = 0;
-            const interval = setInterval(() => {
-                p += 5;
-                if (p > 90) clearInterval(interval);
-                document.getElementById('progressBar').style.width = p + '%';
-            }, 50);
-
-            client.sendFile(file).then(() => {
-                clearInterval(interval);
-                document.getElementById('progressBar').style.width = '100%';
-                log("✅ Upload Complete: " + file.name);
-            });
+            client.sendFile(file).catch(err => log("Error: " + err));
         }
 
         function log(msg) {
             const l = document.getElementById('log');
             l.innerHTML += `<div>${msg}</div>`;
         }
-
     </script>
 </body>
 
