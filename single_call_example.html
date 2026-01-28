@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AdaTP Pro Phone</title>
+    <style>
+        body {
+            background: #000;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: -apple-system, sans-serif;
+            user-select: none;
+        }
+
+        .phone {
+            width: 340px;
+            height: 700px;
+            background: #111;
+            border-radius: 46px;
+            border: 8px solid #222;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 0 60px rgba(255, 255, 255, 0.05);
+        }
+
+        .notch {
+            width: 150px;
+            height: 26px;
+            background: #000;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            border-bottom-left-radius: 14px;
+            border-bottom-right-radius: 14px;
+            z-index: 100;
+        }
+
+        .status-bar {
+            padding: 10px 20px;
+            padding-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            z-index: 90;
+        }
+
+        .signal {
+            display: flex;
+            gap: 2px;
+            align-items: flex-end;
+            height: 12px;
+        }
+
+        .bar {
+            width: 3px;
+            background: #444;
+            border-radius: 1px;
+        }
+
+        .bar.active {
+            background: #fff;
+        }
+
+        .ping-text {
+            font-family: monospace;
+            opacity: 0.7;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+
+        .screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            align-items: center;
+            text-align: center;
+            transition: 0.3s;
+            padding-top: 40px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Dialer (Clean) */
+        .my-number {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-bottom: 50px;
+        }
+
+        input {
+            background: none;
+            border-bottom: 2px solid #333;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            font-size: 2rem;
+            text-align: center;
+            color: white;
+            width: 80%;
+            outline: none;
+            margin-bottom: 50px;
+            font-weight: 300;
+            padding: 10px;
+        }
+
+        input:focus {
+            border-color: #32d74b;
+        }
+
+        /* Call Screen */
+        .avatar-large {
+            width: 120px;
+            height: 120px;
+            background: #333;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            margin-bottom: 20px;
+            transition: 0.3s;
+            border: 4px solid transparent;
+        }
+
+        .avatar-large.speaking {
+            border-color: #32d74b;
+            box-shadow: 0 0 30px rgba(50, 215, 75, 0.3);
+        }
+
+        .call-info h2 {
+            font-weight: 400;
+            font-size: 2rem;
+            margin: 0;
+        }
+
+        .call-info p {
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Buttons */
+        .call-actions {
+            margin-top: auto;
+            padding-bottom: 30px;
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .btn-round {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+
+        .btn-green {
+            background: #32d74b;
+            color: white;
+        }
+
+        .btn-red {
+            background: #ff453a;
+            color: white;
+        }
+
+        .btn-gray {
+            background: #333;
+            color: white;
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+        }
+
+        .btn-muted {
+            background: #fff;
+            color: #000;
+        }
+
+        .incoming-ui {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(15px);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="phone">
+        <div class="notch"></div>
+        <div class="status-bar">
+            <div style="display:flex; align-items:center">
+                <div class="signal" id="signalBars">
+                    <div class="bar active" style="height:40%"></div>
+                    <div class="bar active" style="height:60%"></div>
+                    <div class="bar active" style="height:80%"></div>
+                    <div class="bar" style="height:100%"></div>
+                </div>
+                <span class="ping-text" id="ping">--ms</span>
+            </div>
+            <div id="clock">12:00</div>
+            <div>🔋</div>
+        </div>
+
+        <!-- DIALER -->
+        <div id="screen-dialer" class="screen">
+            <div class="my-number">My ID: <span id="myId">---</span></div>
+            <div
+                style="flex:1; display:flex; flex-direction:column; justify-content:center; width:100%; align-items:center">
+                <p style="color:#666; margin-bottom:10px">Enter Peer ID</p>
+                <input type="text" id="inputNum" placeholder="______" maxlength="6">
+            </div>
+            <div class="call-actions">
+                <button class="btn-round btn-green" style="width:80px; height:80px" onclick="makeCall()">📞</button>
+            </div>
+        </div>
+
+        <!-- IN CALL -->
+        <div id="screen-call" class="screen hidden">
+            <div class="avatar-large" id="avatar">👤</div>
+            <div class="call-info">
+                <h2 id="peerName">User</h2>
+                <p id="callStatus">Calling...</p>
+                <p id="timer" class="hidden">00:00</p>
+                <p style="font-size:10px; color:#555" id="callQuality">HD Voice</p>
+            </div>
+            <div class="call-actions">
+                <button class="btn-round btn-gray" id="muteBtn" onclick="toggleMute()">🎙️</button>
+                <button class="btn-round btn-red" onclick="hangup()">⛔</button>
+            </div>
+        </div>
+
+        <!-- INCOMING -->
+        <div id="overlay-incoming" class="incoming-ui hidden">
+            <div class="avatar-large" style="margin-top:50px; border-color:#fff">📞</div>
+            <h2 style="font-weight:400">Incoming Call</h2>
+            <p style="color:#aaa" id="incomingId">Unknown</p>
+            <div class="call-actions" style="margin-bottom: 80px; width: 100%; justify-content: center; gap: 60px;">
+                <button class="btn-round btn-red" onclick="phone.reject()">💩</button>
+                <button class="btn-round btn-green" onclick="phone.answer()">💚</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { AdaTPPhone } from './src/adatp.js';
+
+        const ringtone = new Audio('https://upload.wikimedia.org/wikipedia/commons/e/e0/Synthesized_Ring_Tone.ogg');
+        ringtone.loop = true;
+        let callInterval = null;
+
+        // --- ULTRA LOW CODE INTEGRATION ---
+        window.phone = new AdaTPPhone("ws://127.0.0.1:3000/ws", {
+            username: "MobileUser", // Auto connect & login
+
+            onConnect: () => document.getElementById('myId').innerText = phone.getMyId().substring(0, 6),
+
+            onNetworkQuality: (ms) => {
+                document.getElementById('ping').innerText = ms + "ms";
+                updateSignalBars(ms);
+                setQuality(ms < 50 ? "HD Voice" : (ms < 150 ? "Good" : "Poor"));
+            },
+
+            onDialing: (target) => {
+                showScreen('screen-call');
+                document.getElementById('peerName').innerText = target;
+                document.getElementById('callStatus').innerText = "Dialing...";
+            },
+
+            onRemoteRinging: () => document.getElementById('callStatus').innerText = "Ringing...",
+
+            onIncomingCall: (id) => {
+                document.getElementById('incomingId').innerText = `ID: ${id.substring(0, 6)}`;
+                document.getElementById('overlay-incoming').classList.remove('hidden');
+                ringtone.play().catch(() => { });
+            },
+
+            onConnected: () => {
+                ringtone.pause();
+                document.getElementById('overlay-incoming').classList.add('hidden');
+                showScreen('screen-call');
+                document.getElementById('callStatus').innerText = "Connected";
+                document.getElementById('callStatus').style.color = "#32d74b";
+                document.getElementById('timer').classList.remove('hidden');
+                startTimer();
+                document.getElementById('avatar').innerText = "😀";
+            },
+
+            onEnded: (reason) => {
+                ringtone.pause(); stopTimer();
+                document.getElementById('overlay-incoming').classList.add('hidden');
+                if (reason) alert(reason);
+                resetUI();
+            },
+
+            onVoiceActivity: () => {
+                const av = document.getElementById('avatar');
+                av.classList.add('speaking');
+                setTimeout(() => av.classList.remove('speaking'), 200);
+            }
+        });
+
+        // At the end, call explicit init() if connection was not auto-started (but we passed config, so it is)
+        // If we want manual signaling channel join:
+        phone.init();
+
+        // --- UI Callbacks ---
+
+        window.makeCall = () => {
+            const target = document.getElementById('inputNum').value;
+            if (target.length !== 6) return alert("Enter 6-char ID");
+            phone.call(target);
+        };
+
+        window.hangup = () => phone.hangup();
+
+        window.toggleMute = () => {
+            const isMuted = phone.toggleMute();
+            const btn = document.getElementById('muteBtn');
+            btn.classList.toggle('btn-muted', isMuted);
+            btn.classList.toggle('btn-gray', !isMuted);
+            btn.innerText = isMuted ? "🔇" : "🎙️";
+        };
+
+        // --- Helpers ---
+        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
+        function resetUI() {
+            showScreen('screen-dialer');
+            document.getElementById('timer').classList.add('hidden');
+            document.getElementById('timer').innerText = "00:00";
+            document.getElementById('callStatus').innerText = "Ready";
+            document.getElementById('callStatus').style.color = "#888";
+            document.getElementById('avatar').innerText = "👤";
+            const btn = document.getElementById('muteBtn');
+            btn.classList.remove('btn-muted'); btn.classList.add('btn-gray'); btn.innerText = "🎙️";
+        }
+        function startTimer() {
+            let s = 0;
+            if (callInterval) clearInterval(callInterval);
+            callInterval = setInterval(() => { s++; document.getElementById('timer').innerText = `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`; }, 1000);
+        }
+        function stopTimer() { clearInterval(callInterval); }
+        function setQuality(txt) { document.getElementById('callQuality').innerText = txt; }
+        function updateSignalBars(ms) {
+            const bars = document.querySelectorAll('.bar');
+            bars.forEach(b => b.classList.remove('active'));
+            if (ms < 500) bars[0].classList.add('active'); if (ms < 300) bars[1].classList.add('active'); if (ms < 150) bars[2].classList.add('active'); if (ms < 80) bars[3].classList.add('active');
+        }
+        setInterval(() => { const d = new Date(); document.getElementById('clock').innerText = `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`; }, 1000);
+    </script>
+</body>
+
+</html>

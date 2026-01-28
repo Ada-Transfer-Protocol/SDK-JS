@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AdaTP Room Chat</title>
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .sidebar {
+            width: 220px;
+            background: #2c3e50;
+            color: #ecf0f1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h3 {
+            padding: 20px;
+            margin: 0;
+            background: #243342;
+        }
+
+        .room-list div {
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        .room-list div:hover {
+            background: #34495e;
+        }
+
+        .room-list .active {
+            background: #34495e;
+            border-left-color: #3498db;
+            font-weight: bold;
+        }
+
+        .main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            font-size: 1.2rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .status {
+            font-size: 0.8rem;
+            color: #aaa;
+            font-weight: normal;
+        }
+
+        .msges {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f9f9f9;
+        }
+
+        .msg-row {
+            margin-bottom: 15px;
+        }
+
+        .msg-user {
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .msg-text {
+            color: #555;
+            line-height: 1.4;
+        }
+
+        .msg-sys {
+            color: #aaa;
+            font-style: italic;
+            font-size: 0.85rem;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .input-box {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #eee;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            outline: none;
+            transition: 0.2s;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <h3>AdaTP Chat</h3>
+        <div class="room-list">
+            <div onclick="switchRoom('general')" class="active" id="r-general"># general</div>
+            <div onclick="switchRoom('random')" id="r-random"># random</div>
+            <div onclick="switchRoom('dev')" id="r-dev"># dev</div>
+        </div>
+    </div>
+    <div class="main">
+        <div class="header">
+            <span id="roomName">#general</span>
+            <span class="status" id="connStatus">Connecting...</span>
+        </div>
+        <div class="msges" id="msgs"></div>
+        <div class="input-box">
+            <input type="text" id="inp" placeholder="Message #general..." onkeypress="if(event.key=='Enter') send()">
+        </div>
+    </div>
+
+    <script type="module">
+        import { AdaTPChat } from './src/adatp.js';
+
+        const client = new AdaTPChat("ws://127.0.0.1:3000/ws");
+        let currentRoom = "general";
+
+        client.on('connect', () => {
+            document.getElementById('connStatus').innerText = "Online";
+            client.join(currentRoom);
+            log("System", "Joined #" + currentRoom, true);
+        });
+
+        client.on('message', (txt, senderId) => {
+            if (senderId === client.getMyId()) return;
+            log(`User ${senderId.substr(0, 4)}`, txt);
+        });
+
+        client.on('user_joined', (sid) => log("System", `User ${sid.substr(0, 4)} joined.`, true));
+        client.on('user_left', (sid) => log("System", `User ${sid.substr(0, 4)} left.`, true));
+
+        client.connect();
+
+        window.switchRoom = (roomName) => {
+            if (currentRoom === roomName) return;
+            document.querySelectorAll('.room-list div').forEach(d => d.classList.remove('active'));
+            document.getElementById('r-' + roomName).classList.add('active');
+            document.getElementById('roomName').innerText = "#" + roomName;
+            document.getElementById('inp').placeholder = `Message #${roomName}...`;
+            document.getElementById('msgs').innerHTML = '';
+            currentRoom = roomName;
+            client.join(currentRoom);
+            log("System", "Switched to #" + currentRoom, true);
+        };
+
+        window.send = () => {
+            const i = document.getElementById('inp');
+            const txt = i.value.trim();
+            if (txt) {
+                client.say(txt);
+                log("Me", txt);
+                i.value = "";
+            }
+        };
+
+        function log(user, text, isSys = false) {
+            const d = document.getElementById('msgs');
+            if (isSys) d.innerHTML += `<div class="msg-sys">${text}</div>`;
+            else d.innerHTML += `<div class="msg-row"><div class="msg-user">${user}</div><div class="msg-text">${text}</div></div>`;
+            d.scrollTop = d.scrollHeight;
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AdaTP Private Chat</title>
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            max-width: 500px;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .header {
+            background: #0084ff;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+        }
+
+        .sub {
+            font-size: 0.8em;
+            opacity: 0.8;
+            font-weight: normal;
+        }
+
+        .chat-area {
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: auto;
+            background: #fff;
+        }
+
+        .msg {
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 15px;
+            max-width: 70%;
+            clear: both;
+            font-size: 0.95rem;
+        }
+
+        .msg.sent {
+            background: #0084ff;
+            color: white;
+            float: right;
+            border-bottom-right-radius: 2px;
+        }
+
+        .msg.received {
+            background: #f0f0f0;
+            color: black;
+            float: left;
+            border-bottom-left-radius: 2px;
+        }
+
+        .input-area {
+            padding: 10px;
+            border-top: 1px solid #eee;
+            display: flex;
+            background: #fafafa;
+        }
+
+        input {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+        }
+
+        button {
+            margin-left: 10px;
+            padding: 0 20px;
+            background: #0084ff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        Support Agent
+        <div class="sub" id="status">Connecting...</div>
+    </div>
+
+    <div class="chat-area" id="chat">
+        <div class="msg received">Hello! How can I help you today?</div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="inp" placeholder="Type a message..." disabled
+            onkeypress="if(event.key==='Enter') send()">
+        <button onclick="send()" id="btn" disabled>Send</button>
+    </div>
+
+    <script type="module">
+        import { AdaTPChat } from './src/adatp.js';
+
+        const chatClient = new AdaTPChat("ws://127.0.0.1:3000/ws");
+        const chatUI = document.getElementById('chat');
+
+        chatClient.on('connect', () => {
+            document.getElementById('status').innerText = "Active";
+            document.getElementById('inp').disabled = false;
+            document.getElementById('btn').disabled = false;
+
+            // Manually join a support room
+            chatClient.join("support-ticket-123");
+        });
+
+        // SDK now filters system messages automatically!
+        chatClient.on('message', (txt, senderId) => {
+            if (senderId === chatClient.getMyId()) return;
+            addMsg(txt, 'received');
+        });
+
+        chatClient.connect();
+
+        window.send = () => {
+            const inp = document.getElementById('inp');
+            const txt = inp.value.trim();
+            if (txt) {
+                chatClient.say(txt);
+                addMsg(txt, 'sent');
+                inp.value = '';
+            }
+        };
+
+        function addMsg(txt, type) {
+            chatUI.innerHTML += `<div class="msg ${type}">${txt}</div>`;
+            chatUI.scrollTop = chatUI.scrollHeight;
+        }
+    </script>
+</body>
+
+</html>

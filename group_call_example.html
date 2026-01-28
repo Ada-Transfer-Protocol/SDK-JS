@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AdaTP Group Conference</title>
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #1a1a1a;
+            color: white;
+            margin: 0;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            max-width: 800px;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .user-card {
+            background: #333;
+            border-radius: 15px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: 0.3s;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .user-card.talking {
+            border-color: #32d74b;
+            box-shadow: 0 0 15px rgba(50, 215, 75, 0.3);
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            background: #555;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            margin-bottom: 10px;
+        }
+
+        .name {
+            font-weight: bold;
+        }
+
+        .mute-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 40px;
+            display: flex;
+            gap: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-red {
+            background: #ff453a;
+            color: white;
+        }
+
+        .btn-gray {
+            background: #333;
+            color: white;
+        }
+
+        .btn-white {
+            background: white;
+            color: black;
+        }
+
+        .setup {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        input {
+            font-size: 1.5rem;
+            padding: 10px;
+            border: none;
+            border-bottom: 2px solid #333;
+            background: none;
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+            outline: none;
+        }
+
+        .join-btn {
+            background: #0084ff;
+            color: white;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="setup" id="setup">
+        <h1>Join Conference</h1>
+        <input type="text" id="roomInput" value="daily-standup" placeholder="Room Name">
+        <button class="join-btn" onclick="joinConf()">Join Audio</button>
+    </div>
+
+    <h1>Daily Standup</h1>
+    <div class="grid" id="grid">
+        <div class="user-card" id="card-me">
+            <div class="mute-badge" id="mute-me">🔇</div>
+            <div class="avatar">Me</div>
+            <div class="name">You</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-gray" id="muteBtn" onclick="toggleMute()">🎙️</button>
+        <button class="btn-red" onclick="leave()">🚪</button>
+    </div>
+
+    <script type="module">
+        import { AdaTPConference } from './src/adatp.js';
+
+        // --- Low Code Integration ---
+        // Just config & go!
+        const client = new AdaTPConference("ws://127.0.0.1:3000/ws", {
+
+            onConnect: () => console.log("Connected"),
+
+            onJoined: (room) => {
+                document.getElementById('setup').style.display = 'none';
+                document.querySelector('h1').innerText = "#" + room;
+            },
+
+            onUserJoined: (sid) => addCard(sid),
+            onUserLeft: (sid) => document.getElementById('card-' + sid)?.remove(),
+
+            onMuteChanged: (sid, isMuted) => {
+                const badge = document.getElementById(`mute-${sid}`);
+                if (badge) badge.style.display = isMuted ? 'block' : 'none';
+            },
+
+            onVoiceActivity: (sid) => {
+                const c = document.getElementById('card-' + sid);
+                if (c) {
+                    c.classList.add('talking');
+                    clearTimeout(c.tm);
+                    c.tm = setTimeout(() => c.classList.remove('talking'), 200);
+                }
+            }
+        });
+
+        // --- UI Logic ---
+
+        window.joinConf = () => client.join(document.getElementById('roomInput').value);
+
+        window.leave = () => { client.leave(); location.reload(); };
+
+        window.toggleMute = () => {
+            const isMuted = client.toggleMute();
+            const btn = document.getElementById('muteBtn');
+            // My UI
+            const myBadge = document.getElementById('mute-me');
+            if (isMuted) {
+                btn.classList.replace('btn-gray', 'btn-white');
+                btn.innerText = '🔇';
+                myBadge.style.display = 'block';
+            } else {
+                btn.classList.replace('btn-white', 'btn-gray');
+                btn.innerText = '🎙️';
+                myBadge.style.display = 'none';
+            }
+        };
+
+        function addCard(sid) {
+            if (document.getElementById('card-' + sid)) return;
+            const div = document.createElement('div');
+            div.className = 'user-card';
+            div.id = 'card-' + sid;
+            div.innerHTML = `<div class="mute-badge" id="mute-${sid}">🔇</div><div class="avatar">👤</div><div class="name">${sid.substr(0, 4)}</div>`;
+            document.getElementById('grid').appendChild(div);
+        }
+    </script>
+</body>
+
+</html>

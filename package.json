@@ -1,0 +1,20 @@
+{
+    "name": "adatp-client",
+    "version": "0.1.0",
+    "description": "AdaTP Client for Browser & Node.js (WebSocket)",
+    "main": "src/client.js",
+    "type": "module",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "adatp",
+        "websocket",
+        "protocol"
+    ],
+    "author": "AdaTP Team",
+    "license": "MIT",
+    "dependencies": {
+        "uuid": "^9.0.1"
+    }
+}

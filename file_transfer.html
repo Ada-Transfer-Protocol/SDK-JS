@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AdaTP File Transfer</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .drop-zone {
+            width: 80%;
+            margin: 20px auto;
+            padding: 50px;
+            border: 2px dashed #007bff;
+            background: #f8f9fa;
+            color: #007bff;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .drop-zone:hover {
+            background: #e2e6ea;
+        }
+
+        #log {
+            margin-top: 20px;
+            text-align: left;
+            max-width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .progress {
+            width: 80%;
+            height: 20px;
+            background: #eee;
+            margin: 10px auto;
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .bar {
+            height: 100%;
+            background: #28a745;
+            width: 0%;
+            transition: width 0.2s;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>AdaTP File Share 📁</h1>
+    <p>Status: <span id="status" style="color:red">Disconnected</span></p>
+
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <h3>Drag & Drop files here</h3>
+        <p>or click to select</p>
+        <input type="file" id="fileInput" hidden>
+    </div>
+
+    <div class="progress" id="progressBox">
+        <div class="bar" id="progressBar"></div>
+    </div>
+
+    <div id="log"></div>
+
+    <script type="module">
+        import { AdaTPClient } from './src/client.js';
+
+        const client = new AdaTPClient('ws://127.0.0.1:3000/ws');
+
+        // Setup
+        client.onConnect = () => {
+            document.getElementById('status').innerText = "Connected";
+            document.getElementById('status').style.color = "green";
+            client.authenticate("WebFileUser", "pass");
+            client.joinRoom("files");
+        };
+
+        client.connect();
+
+        // Drag & Drop Logic
+        const dropZone = document.getElementById('dropZone');
+
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.style.background = "#dbeaff"; };
+        dropZone.ondragleave = (e) => { e.preventDefault(); dropZone.style.background = "#f8f9fa"; };
+        dropZone.ondrop = (e) => {
+            e.preventDefault();
+            dropZone.style.background = "#f8f9fa";
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        };
+
+        document.getElementById('fileInput').onchange = (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        };
+
+        function handleFile(file) {
+            log(`Starting upload: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+            document.getElementById('progressBox').style.display = 'block';
+            document.getElementById('progressBar').style.width = '0%';
+
+            // Mock Progress UI (since generic sendFile doesn't emit progress events yet)
+            // In real app, pass a callback to sendFile.
+            let p = 0;
+            const interval = setInterval(() => {
+                p += 5;
+                if (p > 90) clearInterval(interval);
+                document.getElementById('progressBar').style.width = p + '%';
+            }, 50);
+
+            client.sendFile(file).then(() => {
+                clearInterval(interval);
+                document.getElementById('progressBar').style.width = '100%';
+                log("✅ Upload Complete: " + file.name);
+            });
+        }
+
+        function log(msg) {
+            const l = document.getElementById('log');
+            l.innerHTML += `<div>${msg}</div>`;
+        }
+
+    </script>
+</body>
+
+</html>

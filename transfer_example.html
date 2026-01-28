@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AdaTP File Transfer</title>
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            text-align: center;
+        }
+
+        .drop-zone {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            border-radius: 10px;
+            transition: 0.3s;
+            background: #fafafa;
+            cursor: pointer;
+        }
+
+        .drop-zone:hover {
+            border-color: #0084ff;
+            background: #eaf6ff;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background: #eee;
+            height: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .fill {
+            width: 0%;
+            height: 100%;
+            background: #0084ff;
+            transition: 0.2s;
+        }
+
+        #status {
+            margin-top: 15px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>AdaTP File Transfer</h1>
+
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <p>Drag & Drop files here or Click to Upload</p>
+        <input type="file" id="fileInput" style="display:none" onchange="handleFile(this.files[0])">
+    </div>
+
+    <div class="progress-bar" id="pBar">
+        <div class="fill" id="pFill"></div>
+    </div>
+    <div id="status">Connecting to server...</div>
+
+    <script type="module">
+        import { AdaTpFileTransfer } from './src/adatp.js';
+
+        const client = new AdaTpFileTransfer("ws://127.0.0.1:3000/ws");
+
+        client.on('connect', () => {
+            document.getElementById('status').innerText = "Ready to send";
+        });
+
+        client.on('progress', (pct) => {
+            document.getElementById('pBar').style.display = 'block';
+            document.getElementById('pFill').style.width = pct + "%";
+            document.getElementById('status').innerText = `Sending... ${Math.round(pct)}%`;
+        });
+
+        client.on('complete', () => {
+            document.getElementById('status').innerText = "Transfer Complete!";
+            setTimeout(() => {
+                document.getElementById('pBar').style.display = 'none';
+                document.getElementById('pFill').style.width = "0%";
+                document.getElementById('status').innerText = "Ready to send";
+            }, 2000);
+        });
+
+        client.connect();
+
+        window.handleFile = (file) => {
+            if (!file) return;
+            console.log("Sending", file.name);
+            client.sendFile(file);
+        };
+
+        const dz = document.getElementById('dropZone');
+        dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.style.borderColor = '#0084ff'; });
+        dz.addEventListener('dragleave', (e) => { e.preventDefault(); dz.style.borderColor = '#ccc'; });
+        dz.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dz.style.borderColor = '#ccc';
+            handleFile(e.dataTransfer.files[0]);
+        });
+    </script>
+</body>
+
+</html>
