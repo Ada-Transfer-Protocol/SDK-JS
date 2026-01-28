@@ -1,113 +1,168 @@
-# AdaTP JavaScript SDK
+# AdaTP JavaScript SDK (v2.0)
 
-A modern, high-performance WebSocket client SDK for the **Ada Transfer Protocol (AdaTP)**. Designed for building real-time collaboration apps, voice conferences, and file sharing platforms directly in the browser.
+**Ada Transfer Protocol (AdaTP)** is a next-generation real-time communication protocol designed for low-latency voice, video, and data transfer. This JavaScript SDK provides a modular, low-code interface to integrate AdaTP into any web application.
 
-## 🚀 Features
-
-*   **Real-time Messaging:** Zero-latency text chat and command dispatch.
-*   **Voice Conferencing:** Built-in **Voice Engine** (AudioContext + Auto-Echo Cancellation). No external codecs (Opus/WebRTC) required.
-*   **File Transfer:** Chunked binary file uploads with efficient memory usage.
-*   **Presence:** Real-time user join/leave events.
-*   **Zero Dependencies:** Single file (`adatp.js`), works in any modern browser.
+> **Key Features:**
+> *   🚀 **Low-Latency & High Performance**: Optimized binary protocol over WebSocket.
+> *   🧩 **Modular Architecture**: Separate modules for Phone, Chat, Conference, and File Transfer.
+> *   ⚡ **Low-Code Integration**: Initialize and start using with a simple configuration object.
+> *   🔒 **Secure & Private**: Built-in authentication and room management.
+> *   🔈 **High-Quality Audio**: 16kHz PCM Audio Engine with VAD (Voice Activity Detection).
 
 ---
 
 ## 📦 Installation
 
-Simply download `src/adatp.js` and import it as an ES Module.
+Simply copy the `src` folder to your project or import directly.
 
 ```javascript
-import { AdaTP } from './path/to/adatp.js';
+import { AdaTPPhone, AdaTPChat, AdaTPConference } from './src/adatp.js';
 ```
 
 ---
 
-## ⚡ Quick Start
+## 📱 1. AdaTP Pro Phone (1-on-1 Calls)
 
-### 1. Connect & Login
+Best for softphones, customer support lines, and private voice calls. Handles signaling (`INVITE`, `RINGING`, `BUSY`), audio streams, and connection quality monitoring automatically.
+
+### **Quick Start**
 
 ```javascript
-const client = new AdaTP("ws://localhost:3000/ws");
-
-client.on('connect', () => {
-    console.log("Connected to Server!");
-    client.login("Username", "Password");
-    client.join("general");
+const phone = new AdaTPPhone("ws://127.0.0.1:3000/ws", {
+    username: "Agent007", // Auto-login
+    
+    // --- Lifecycle Events ---
+    onConnect: ()       => console.log("Phone Online 🟢"),
+    onDisconnect: ()    => console.log("Phone Offline 🔴"),
+    
+    // --- Call Events ---
+    onIncomingCall: (id) => {
+        console.log(`Incoming call from ${id}`);
+        // Show UI: "Answer" or "Reject"
+    },
+    
+    onDialing: (id)      => console.log(`Calling ${id}...`),
+    onRemoteRinging: ()  => console.log("User is ringing..."),
+    
+    onConnected: () => {
+        console.log("Call Established! 📞");
+        // Audio starts automatically
+    },
+    
+    onEnded: (reason) => console.log(`Call Ended: ${reason}`),
+    
+    // --- Quality & Status ---
+    onNetworkQuality: (ms) => console.log(`Ping: ${ms}ms`),
+    onVoiceActivity: ()    => console.log("User is speaking 🗣️")
 });
 
-client.connect();
+// --- Actions ---
+phone.call("User123");  // Start a call
+phone.answer();         // Answer incoming
+phone.reject();         // Reject incoming
+phone.hangup();         // End call
+phone.toggleMute();     // Mute/Unmute Mic
 ```
 
-### 2. Chat (Send & Receive)
+---
+
+## 💬 2. AdaTP Chat (Real-time Messaging)
+
+Best for support chats, group channels, and instant messaging. Supports private rooms (`join("room")`) and direct messages.
+
+### **Quick Start**
 
 ```javascript
-// Listen for messages
-client.on('message', (text, senderId) => {
-    console.log(`${senderId} says: ${text}`);
+const chat = new AdaTPChat("ws://127.0.0.1:3000/ws", {
+    username: "SupportBot",
+    
+    onConnect: () => {
+        chat.join("general"); // Auto-join room
+    },
+    
+    onMessage: (text, senderId) => {
+        console.log(`[${senderId}]: ${text}`);
+    },
+    
+    onUserJoined: (id) => console.log(`${id} joined the room.`),
+    onUserLeft: (id)   => console.log(`${id} left the room.`)
 });
 
-// Send a message
-client.say("Hello World!");
+// --- Actions ---
+chat.say("Hello World!");  // Send to current room
+chat.join("random");       // Switch room
 ```
 
-### 3. Voice Call (Push-to-Talk)
+---
 
-The SDK handles microphone permissions, mixing, and raw audio processing automatically.
+## 👥 3. AdaTP Conference (Group Audio)
+
+Best for meetings, stand-ups, and voice channels. Features automatic **P2P Discovery** (who is in the room) and **Mute Synchronization**.
+
+### **Quick Start**
 
 ```javascript
-// Start Talking (Mic On)
-await client.startCall();
-
-// Stop Talking (Mic Off)
-client.stopCall();
-
-// Listen for others (Automatic Playback)
-client.on('voice', (senderId) => {
-    console.log(`${senderId} is talking...`);
-    // Visual indicators can be updated here
+const conf = new AdaTPConference("ws://127.0.0.1:3000/ws", {
+    username: "TeamLead",
+    
+    onConnect: () => console.log("Connected to Server"),
+    
+    onJoined: (room) => console.log(`Joined #${room}`),
+    
+    // --- Participant Management ---
+    onUserJoined: (id) => addParticipantCard(id),
+    onUserLeft: (id)   => removeParticipantCard(id),
+    
+    // --- Real-time State ---
+    onMuteChanged: (id, isMuted) => {
+         // Show/Hide Mute Icon on User Card
+         console.log(`User ${id} is ${isMuted ? 'muted' : 'unmuted'}`);
+    },
+    
+    onVoiceActivity: (id) => highlightUser(id)
 });
+
+// --- Actions ---
+conf.join("daily-standup"); // Join audio room
+conf.toggleMute();          // Mute self & broadcast state
+conf.leave();               // Leave room & notify others
 ```
 
-### 4. File Upload
+---
+
+## 📂 4. File Transfer (Binaries)
+
+Reliable file streaming over AdaTP.
 
 ```javascript
+import { AdaTpFileTransfer } from './src/adatp.js';
+
+const client = new AdaTpFileTransfer("ws://127.0.0.1:3000/ws");
+
+// Send File
 const fileInput = document.getElementById('myFile');
-const file = fileInput.files[0];
+client.sendFile(fileInput.files[0]);
 
-await client.sendFile(file);
-console.log("Upload Sent!");
+// Receive Progress
+client.on('progress', (pct) => console.log(`Upload: ${pct}%`));
+client.on('complete', ()    => console.log("Transfer Done!"));
 ```
 
 ---
 
-## 🛠 API Reference
+## 🛠 Advanced Configuration
 
-### `class AdaTP(url)`
+All classes accept an optional `options` object:
 
-| Method | Description |
-| :--- | :--- |
-| `connect()` | Opens WebSocket connection. |
-| `disconnect()` | Closes connection gracefully. |
-| `login(user, pass)` | Sends authentication request. |
-| `join(roomName)` | Joins a specific room/channel. |
-| `say(text)` | Sends a text message to the room. |
-| `startCall()` | Requests Mic access and starts streaming audio. |
-| `stopCall()` | Stops audio streaming and releases Mic. |
-| `sendFile(file)` | Uploads a File object (Browser File API). |
-
-### Events (`client.on(event, cb)`)
-
-| Event | Callback Arguments | Description |
-| :--- | :--- | :--- |
-| `'connect'` | `()` | Socket connected. |
-| `'disconnect'` | `()` | Socket closed. |
-| `'message'` | `(text, senderId)` | Text message received. |
-| `'voice'` | `(senderId)` | Voice activity detected from a user. |
-| `'user_joined'` | `(senderId)` | A new user joined the room. |
-| `'user_left'` | `(senderId)` | A user disconnected or left. |
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `username` | `string` | `"User"` | Initial username for authentication. |
+| `password` | `string` | `"pass"` | Password for authentication. |
+| `autoConnect`| `boolean`| `true` | Automatically connect on instantiation. |
+| `*` | `function` | `undefined` | Any event handler (e.g. `onConnect`, `onMessage`). |
 
 ---
 
-## ⚠️ Requirements
-*   **HTTPS:** Browsers require HTTPS (or localhost) to access the Microphone (`getUserMedia`).
-*   **Modern Browser:** Chrome 80+, Firefox 75+, Safari 13+ (ES Modules support).
+## License
+
+MIT License. Ada Transfer Protocol Team.
