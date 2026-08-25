@@ -29,10 +29,15 @@ interface ParsedPacket {
 }
 type EventCallback = (...args: any[]) => void;
 type EventMap = Record<string, EventCallback[]>;
+declare const ADATP_LOCALES: readonly ["en", "tr", "it", "fr", "de", "zh", "ja", "hi", "ar"];
+type AdaTPLocale = typeof ADATP_LOCALES[number];
 interface AdaTPOptions {
     autoConnect?: boolean;
     username?: string;
     password?: string;
+    /** SDK language for user-facing SDK strings. Default 'en'.
+     *  The wire protocol is language-neutral; this is client-side metadata. */
+    locale?: AdaTPLocale | string;
     onConnect?: () => void;
     onDisconnect?: () => void;
     onMessage?: (text: string, senderId: string) => void;
@@ -58,9 +63,13 @@ declare class AdaTPBase {
     protected sid: Uint8Array;
     protected events: EventMap;
     protected isConnected: boolean;
+    /** Active SDK locale (normalized; falls back to 'en'). */
+    locale: string;
     /** True after the server confirmed AuthSuccess. */
     authenticated: boolean;
     constructor(url: string, options?: AdaTPOptions);
+    /** Switches the SDK language at runtime (one of ADATP_LOCALES). */
+    setLocale(locale: string): void;
     on(event: string, callback: EventCallback): void;
     emit(event: string, ...args: any[]): void;
     connect(username?: string, password?: string): Promise<void>;
@@ -138,4 +147,4 @@ declare class AdaTPPhone extends AdaTPBase {
     disconnect(): void;
 }
 
-export { AdaTPBase, AdaTPChat, AdaTPConference, AdaTPGame, type AdaTPOptions, AdaTPPhone, AdaTpFileTransfer, MessageType, type MessageTypeValue };
+export { ADATP_LOCALES, AdaTPBase, AdaTPChat, AdaTPConference, AdaTPGame, type AdaTPLocale, type AdaTPOptions, AdaTPPhone, AdaTpFileTransfer, MessageType, type MessageTypeValue };

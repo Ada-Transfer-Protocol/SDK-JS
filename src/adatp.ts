@@ -74,11 +74,18 @@ class Packet {
 type EventCallback = (...args: any[]) => void;
 type EventMap = Record<string, EventCallback[]>;
 
+// Supported SDK locales (BCP 47 primary subtags).
+export const ADATP_LOCALES = ['en', 'tr', 'it', 'fr', 'de', 'zh', 'ja', 'hi', 'ar'] as const;
+export type AdaTPLocale = typeof ADATP_LOCALES[number];
+
 // --- OPTIONS INTERFACE ---
 export interface AdaTPOptions {
     autoConnect?: boolean;
     username?: string;
     password?: string;
+    /** SDK language for user-facing SDK strings. Default 'en'.
+     *  The wire protocol is language-neutral; this is client-side metadata. */
+    locale?: AdaTPLocale | string;
     onConnect?: () => void;
     onDisconnect?: () => void;
     onMessage?: (text: string, senderId: string) => void;
@@ -108,12 +115,16 @@ export class AdaTPBase {
     protected sid: Uint8Array;
     protected events: EventMap = {};
     protected isConnected: boolean = false;
+    /** Active SDK locale (normalized; falls back to 'en'). */
+    public locale: string = 'en';
     /** True after the server confirmed AuthSuccess. */
     public authenticated: boolean = false;
 
     constructor(url: string, options: AdaTPOptions = {}) {
         this.url = url;
         this.options = options;
+        this.locale = (ADATP_LOCALES as readonly string[]).includes(options.locale || '')
+            ? (options.locale as string) : 'en';
         this.sid = new Uint8Array(16);
         crypto.getRandomValues(this.sid);
 
@@ -130,6 +141,11 @@ export class AdaTPBase {
         if (options.autoConnect !== false) {
             setTimeout(() => this.connect(options.username, options.password), 10);
         }
+    }
+
+    /** Switches the SDK language at runtime (one of ADATP_LOCALES). */
+    setLocale(locale: string): void {
+        this.locale = (ADATP_LOCALES as readonly string[]).includes(locale) ? locale : 'en';
     }
 
     on(event: string, callback: EventCallback): void {

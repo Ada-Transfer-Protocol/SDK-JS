@@ -47,15 +47,19 @@ var Packet = class {
     return { type, payload, sessionId };
   }
 };
+var ADATP_LOCALES = ["en", "tr", "it", "fr", "de", "zh", "ja", "hi", "ar"];
 var AdaTPBase = class {
   constructor(url, options = {}) {
     this.ws = null;
     this.events = {};
     this.isConnected = false;
+    /** Active SDK locale (normalized; falls back to 'en'). */
+    this.locale = "en";
     /** True after the server confirmed AuthSuccess. */
     this.authenticated = false;
     this.url = url;
     this.options = options;
+    this.locale = ADATP_LOCALES.includes(options.locale || "") ? options.locale : "en";
     this.sid = new Uint8Array(16);
     crypto.getRandomValues(this.sid);
     Object.keys(options).forEach((key) => {
@@ -69,6 +73,10 @@ var AdaTPBase = class {
     if (options.autoConnect !== false) {
       setTimeout(() => this.connect(options.username, options.password), 10);
     }
+  }
+  /** Switches the SDK language at runtime (one of ADATP_LOCALES). */
+  setLocale(locale) {
+    this.locale = ADATP_LOCALES.includes(locale) ? locale : "en";
   }
   on(event, callback) {
     if (!this.events[event]) this.events[event] = [];
@@ -497,6 +505,7 @@ var AdaTPPhone = class extends AdaTPBase {
   }
 };
 export {
+  ADATP_LOCALES,
   AdaTPBase,
   AdaTPChat,
   AdaTPConference,
