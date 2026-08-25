@@ -187,3 +187,14 @@ client.on('complete', ()    => console.log("Transfer Done!"));
 ## License
 
 MIT License. Ada Transfer Protocol Team.
+
+## Language / locale
+
+The SDK takes a `locale` option for its user-facing strings (client-side
+metadata — the wire protocol is language-neutral). Default `en`; supported:
+`en tr it fr de zh ja hi ar`.
+
+```js
+const chat = new AdaTPChat(url, { username, password, locale: 'tr' });
+chat.setLocale('de'); // switch at runtime
+```

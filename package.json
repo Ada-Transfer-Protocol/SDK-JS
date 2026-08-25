@@ -1,6 +1,6 @@
 {
     "name": "adatp-client",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "description": "AdaTP Client for Browser & Node.js (WebSocket)",
     "main": "src/client.js",
     "type": "module",

@@ -3,14 +3,20 @@ var MessageType = {
   HandshakeInit: 1,
   AuthRequest: 16,
   AuthSuccess: 19,
+  AuthFailure: 20,
   TextMessage: 32,
   FileInit: 48,
   FileChunk: 49,
   FileComplete: 51,
   VoiceData: 68,
-  VideoData: 83,
+  GameState: 80,
+  ToolCall: 112,
+  ToolResult: 113,
+  ToolError: 114,
+  VideoData: 147,
   PresenceUpdate: 96,
-  JoinRoom: 160
+  JoinRoom: 160,
+  RoomJoined: 161
 };
 var MAGIC_NUMBER = 1094992212;
 var Packet = class {
@@ -41,13 +47,19 @@ var Packet = class {
     return { type, payload, sessionId };
   }
 };
+var ADATP_LOCALES = ["en", "tr", "it", "fr", "de", "zh", "ja", "hi", "ar"];
 var AdaTPBase = class {
   constructor(url, options = {}) {
     this.ws = null;
     this.events = {};
     this.isConnected = false;
+    /** Active SDK locale (normalized; falls back to 'en'). */
+    this.locale = "en";
+    /** True after the server confirmed AuthSuccess. */
+    this.authenticated = false;
     this.url = url;
     this.options = options;
+    this.locale = ADATP_LOCALES.includes(options.locale || "") ? options.locale : "en";
     this.sid = new Uint8Array(16);
     crypto.getRandomValues(this.sid);
     Object.keys(options).forEach((key) => {
@@ -61,6 +73,10 @@ var AdaTPBase = class {
     if (options.autoConnect !== false) {
       setTimeout(() => this.connect(options.username, options.password), 10);
     }
+  }
+  /** Switches the SDK language at runtime (one of ADATP_LOCALES). */
+  setLocale(locale) {
+    this.locale = ADATP_LOCALES.includes(locale) ? locale : "en";
   }
   on(event, callback) {
     if (!this.events[event]) this.events[event] = [];
@@ -95,6 +111,27 @@ var AdaTPBase = class {
     const p = Packet.fromBytes(data);
     if (!p) return;
     const senderId = [...p.sessionId].map((b) => b.toString(16).padStart(2, "0")).join("");
+    if (p.type === MessageType.AuthSuccess) {
+      let identity = null;
+      try {
+        identity = JSON.parse(new TextDecoder().decode(p.payload));
+      } catch {
+      }
+      this.authenticated = true;
+      this.emit("auth", identity);
+      return;
+    }
+    if (p.type === MessageType.AuthFailure) {
+      const reason = new TextDecoder().decode(p.payload);
+      this.authenticated = false;
+      console.warn("[AdaTP] Authentication rejected by server:", reason);
+      this.emit("auth_failure", reason);
+      return;
+    }
+    if (p.type === MessageType.RoomJoined) {
+      this.emit("room_joined", new TextDecoder().decode(p.payload));
+      return;
+    }
     this.handlePacket(p, senderId);
   }
   handlePacket(_p, _senderId) {
@@ -133,15 +170,45 @@ var AdaTPChat = class extends AdaTPBase {
     }
   }
 };
+var AdaTPGame = class extends AdaTPBase {
+  join(room) {
+    this._send(MessageType.JoinRoom, room);
+  }
+  /** Broadcasts a state object (JSON) or raw bytes to the current room. */
+  sendState(state) {
+    const payload = state instanceof Uint8Array ? state : JSON.stringify(state);
+    this._send(MessageType.GameState, payload);
+  }
+  say(text) {
+    this._send(MessageType.TextMessage, text);
+  }
+  handlePacket(p, senderId) {
+    if (p.type === MessageType.GameState) {
+      const raw = new TextDecoder().decode(p.payload);
+      let state;
+      try {
+        state = JSON.parse(raw);
+      } catch {
+        state = p.payload;
+      }
+      this.emit("state", state, senderId);
+    } else if (p.type === MessageType.TextMessage) {
+      this.emit("message", new TextDecoder().decode(p.payload), senderId);
+    } else if (p.type === MessageType.PresenceUpdate) {
+      const status = new TextDecoder().decode(p.payload);
+      this.emit(status === "LEAVE" ? "user_left" : "user_joined", senderId);
+    }
+  }
+};
 var AdaTpFileTransfer = class extends AdaTPBase {
   async sendFile(file) {
     const id = new Uint8Array(16);
     crypto.getRandomValues(id);
-    const meta = JSON.stringify({ id: [...id].join(""), name: file.name, size: file.size });
+    const meta = JSON.stringify({ id: [...id].join(""), filename: file.name, size: file.size });
     this._send(MessageType.FileInit, meta);
     const buf = await file.arrayBuffer();
     const u8 = new Uint8Array(buf);
-    const CHUNK = 16e3;
+    const CHUNK = 16384;
     for (let i = 0; i < u8.length; i += CHUNK) {
       const chunk = u8.slice(i, i + CHUNK);
       const pay = new Uint8Array(16 + chunk.length);
@@ -438,9 +505,11 @@ var AdaTPPhone = class extends AdaTPBase {
   }
 };
 export {
+  ADATP_LOCALES,
   AdaTPBase,
   AdaTPChat,
   AdaTPConference,
+  AdaTPGame,
   AdaTPPhone,
   AdaTpFileTransfer,
   MessageType

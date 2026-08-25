@@ -6,14 +6,20 @@ declare const MessageType: {
     readonly HandshakeInit: 1;
     readonly AuthRequest: 16;
     readonly AuthSuccess: 19;
+    readonly AuthFailure: 20;
     readonly TextMessage: 32;
     readonly FileInit: 48;
     readonly FileChunk: 49;
     readonly FileComplete: 51;
     readonly VoiceData: 68;
-    readonly VideoData: 83;
+    readonly GameState: 80;
+    readonly ToolCall: 112;
+    readonly ToolResult: 113;
+    readonly ToolError: 114;
+    readonly VideoData: 147;
     readonly PresenceUpdate: 96;
     readonly JoinRoom: 160;
+    readonly RoomJoined: 161;
 };
 type MessageTypeValue = typeof MessageType[keyof typeof MessageType];
 interface ParsedPacket {
@@ -23,10 +29,15 @@ interface ParsedPacket {
 }
 type EventCallback = (...args: any[]) => void;
 type EventMap = Record<string, EventCallback[]>;
+declare const ADATP_LOCALES: readonly ["en", "tr", "it", "fr", "de", "zh", "ja", "hi", "ar"];
+type AdaTPLocale = typeof ADATP_LOCALES[number];
 interface AdaTPOptions {
     autoConnect?: boolean;
     username?: string;
     password?: string;
+    /** SDK language for user-facing SDK strings. Default 'en'.
+     *  The wire protocol is language-neutral; this is client-side metadata. */
+    locale?: AdaTPLocale | string;
     onConnect?: () => void;
     onDisconnect?: () => void;
     onMessage?: (text: string, senderId: string) => void;
@@ -52,7 +63,13 @@ declare class AdaTPBase {
     protected sid: Uint8Array;
     protected events: EventMap;
     protected isConnected: boolean;
+    /** Active SDK locale (normalized; falls back to 'en'). */
+    locale: string;
+    /** True after the server confirmed AuthSuccess. */
+    authenticated: boolean;
     constructor(url: string, options?: AdaTPOptions);
+    /** Switches the SDK language at runtime (one of ADATP_LOCALES). */
+    setLocale(locale: string): void;
     on(event: string, callback: EventCallback): void;
     emit(event: string, ...args: any[]): void;
     connect(username?: string, password?: string): Promise<void>;
@@ -64,6 +81,24 @@ declare class AdaTPBase {
 }
 declare class AdaTPChat extends AdaTPBase {
     join(room: string): void;
+    say(text: string): void;
+    protected handlePacket(p: ParsedPacket, senderId: string): void;
+}
+/**
+ * Realtime game/state client built on the GameState packet (0x0050).
+ * State payloads are opaque to the server; this class JSON-encodes them.
+ *
+ * ```js
+ * const game = new AdaTPGame("ws://127.0.0.1:3000/ws", { username, password });
+ * game.join("match-42");
+ * game.on('state', (state, senderId) => render(state));
+ * game.sendState({ v: 1, game: "tictactoe", state: { board, turn } });
+ * ```
+ */
+declare class AdaTPGame extends AdaTPBase {
+    join(room: string): void;
+    /** Broadcasts a state object (JSON) or raw bytes to the current room. */
+    sendState(state: object | Uint8Array): void;
     say(text: string): void;
     protected handlePacket(p: ParsedPacket, senderId: string): void;
 }
@@ -112,4 +147,4 @@ declare class AdaTPPhone extends AdaTPBase {
     disconnect(): void;
 }
 
-export { AdaTPBase, AdaTPChat, AdaTPConference, type AdaTPOptions, AdaTPPhone, AdaTpFileTransfer, MessageType, type MessageTypeValue };
+export { ADATP_LOCALES, AdaTPBase, AdaTPChat, AdaTPConference, AdaTPGame, type AdaTPLocale, type AdaTPOptions, AdaTPPhone, AdaTpFileTransfer, MessageType, type MessageTypeValue };

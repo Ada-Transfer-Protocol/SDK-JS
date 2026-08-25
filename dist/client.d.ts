@@ -8,7 +8,8 @@ declare const MessageType: {
     readonly FileChunk: 49;
     readonly FileComplete: 51;
     readonly VoiceData: 68;
-    readonly VideoData: 83;
+    readonly GameState: 80;
+    readonly VideoData: 147;
     readonly PresenceUpdate: 96;
     readonly JoinRoom: 160;
 };

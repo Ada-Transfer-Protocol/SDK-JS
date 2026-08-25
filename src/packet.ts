@@ -10,7 +10,8 @@ export const MessageType = {
     FileChunk: 0x0031,
     FileComplete: 0x0033,
     VoiceData: 0x0044,
-    VideoData: 0x0053,
+    GameState: 0x0050,
+    VideoData: 0x0093,
     PresenceUpdate: 0x0060,
     JoinRoom: 0x00A0
 } as const;
