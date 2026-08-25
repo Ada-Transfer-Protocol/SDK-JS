@@ -12,6 +12,20 @@
 
 ---
 
+## 🔒 Transport security (and why there's no protocol-v2 handshake here)
+
+This browser SDK is **plaintext-over-`wss`**: it does not run AdaTP's own
+session encryption and instead delegates confidentiality **and** server
+authentication to **TLS** (`wss://`), which browsers always have. Always connect
+over `wss://` in production.
+
+AdaTP **protocol v2** (the authenticated, Ed25519-signed handshake with key
+pinning) exists for peers that *cannot* run TLS — e.g. constrained devices. A
+browser can always use TLS, so v2 is **intentionally not implemented in this
+SDK** (it would add a full crypto stack for no security gain over `wss://`). The
+server and the Node/C/Python/PHP SDKs implement v2 end-to-end; see
+[the spec](https://github.com/Ada-Transfer-Protocol/Server/blob/main/docs/spec/12-authenticated-handshake.md).
+
 ## 🛠 Prerequisites & Installation
 
 **Prerequisites:**
