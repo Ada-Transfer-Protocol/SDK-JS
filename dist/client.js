@@ -10,7 +10,8 @@ var MessageType = {
   FileChunk: 49,
   FileComplete: 51,
   VoiceData: 68,
-  VideoData: 83,
+  GameState: 80,
+  VideoData: 147,
   PresenceUpdate: 96,
   JoinRoom: 160
 };

@@ -8,14 +8,20 @@ export const MessageType = {
     HandshakeInit: 0x0001,
     AuthRequest: 0x0010,
     AuthSuccess: 0x0013,
+    AuthFailure: 0x0014,
     TextMessage: 0x0020,
     FileInit: 0x0030,
     FileChunk: 0x0031,
     FileComplete: 0x0033,
     VoiceData: 0x0044,
-    VideoData: 0x0053,
+    GameState: 0x0050,
+    ToolCall: 0x0070,
+    ToolResult: 0x0071,
+    ToolError: 0x0072,
+    VideoData: 0x0093,
     PresenceUpdate: 0x0060,
-    JoinRoom: 0x00A0
+    JoinRoom: 0x00A0,
+    RoomJoined: 0x00A1
 } as const;
 
 export type MessageTypeValue = typeof MessageType[keyof typeof MessageType];
@@ -102,6 +108,8 @@ export class AdaTPBase {
     protected sid: Uint8Array;
     protected events: EventMap = {};
     protected isConnected: boolean = false;
+    /** True after the server confirmed AuthSuccess. */
+    public authenticated: boolean = false;
 
     constructor(url: string, options: AdaTPOptions = {}) {
         this.url = url;
@@ -163,6 +171,27 @@ export class AdaTPBase {
         const p = Packet.fromBytes(data);
         if (!p) return;
         const senderId = [...p.sessionId].map(b => b.toString(16).padStart(2, '0')).join('');
+
+        // System packets are handled here so every client class benefits.
+        if (p.type === MessageType.AuthSuccess) {
+            let identity: unknown = null;
+            try { identity = JSON.parse(new TextDecoder().decode(p.payload)); } catch { /* legacy */ }
+            this.authenticated = true;
+            this.emit('auth', identity);
+            return;
+        }
+        if (p.type === MessageType.AuthFailure) {
+            const reason = new TextDecoder().decode(p.payload);
+            this.authenticated = false;
+            console.warn('[AdaTP] Authentication rejected by server:', reason);
+            this.emit('auth_failure', reason);
+            return;
+        }
+        if (p.type === MessageType.RoomJoined) {
+            this.emit('room_joined', new TextDecoder().decode(p.payload));
+            return;
+        }
+
         this.handlePacket(p, senderId);
     }
 
@@ -214,19 +243,63 @@ export class AdaTPChat extends AdaTPBase {
 }
 
 // ==========================================
+// 2b. GAME CLIENT (room-scoped shared state)
+// ==========================================
+/**
+ * Realtime game/state client built on the GameState packet (0x0050).
+ * State payloads are opaque to the server; this class JSON-encodes them.
+ *
+ * ```js
+ * const game = new AdaTPGame("ws://127.0.0.1:3000/ws", { username, password });
+ * game.join("match-42");
+ * game.on('state', (state, senderId) => render(state));
+ * game.sendState({ v: 1, game: "tictactoe", state: { board, turn } });
+ * ```
+ */
+export class AdaTPGame extends AdaTPBase {
+    join(room: string): void {
+        this._send(MessageType.JoinRoom, room);
+    }
+
+    /** Broadcasts a state object (JSON) or raw bytes to the current room. */
+    sendState(state: object | Uint8Array): void {
+        const payload = state instanceof Uint8Array ? state : JSON.stringify(state);
+        this._send(MessageType.GameState, payload as any);
+    }
+
+    say(text: string): void {
+        this._send(MessageType.TextMessage, text);
+    }
+
+    protected handlePacket(p: ParsedPacket, senderId: string): void {
+        if (p.type === MessageType.GameState) {
+            const raw = new TextDecoder().decode(p.payload);
+            let state: unknown;
+            try { state = JSON.parse(raw); } catch { state = p.payload; }
+            this.emit('state', state, senderId);
+        } else if (p.type === MessageType.TextMessage) {
+            this.emit('message', new TextDecoder().decode(p.payload), senderId);
+        } else if (p.type === MessageType.PresenceUpdate) {
+            const status = new TextDecoder().decode(p.payload);
+            this.emit(status === "LEAVE" ? 'user_left' : 'user_joined', senderId);
+        }
+    }
+}
+
+// ==========================================
 // 3. FILE TRANSFER CLIENT
 // ==========================================
 export class AdaTpFileTransfer extends AdaTPBase {
     async sendFile(file: File): Promise<void> {
         const id = new Uint8Array(16);
         crypto.getRandomValues(id);
-        const meta = JSON.stringify({ id: [...id].join(''), name: file.name, size: file.size });
+        const meta = JSON.stringify({ id: [...id].join(''), filename: file.name, size: file.size });
 
         this._send(MessageType.FileInit, meta);
 
         const buf = await file.arrayBuffer();
         const u8 = new Uint8Array(buf);
-        const CHUNK = 16000;
+        const CHUNK = 16384;
 
         for (let i = 0; i < u8.length; i += CHUNK) {
             const chunk = u8.slice(i, i + CHUNK);
